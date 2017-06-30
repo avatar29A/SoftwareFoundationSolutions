@@ -37,7 +37,8 @@ Theorem plus_comm : forall n m : nat,
 Proof.
   intros n m. induction n as [| n' IHn'].
   simpl. rewrite <- plus_n_O. reflexivity.
-  simpl. rewrite -> IHn'. rewrite -> plus_n_Sm. reflexivity. Qed.
+  simpl. rewrite -> IHn'. rewrite -> plus_n_Sm. reflexivity. 
+Qed.
 
 Theorem plus_assoc : forall n m p : nat,
   n + (m + p) = (n + m) + p.
@@ -95,3 +96,59 @@ Proof.
   rewrite <- H3. reflexivity.
 Qed.
 
+Lemma mult_n_zero : forall n : nat,
+  n * 0 = 0 * n.
+Proof.
+  intros n. induction n as [|n' IHn'].
+  reflexivity.
+  simpl. rewrite -> IHn'. simpl. reflexivity.
+
+Qed.
+
+Lemma mult_m_plus_Sn_eq_mn: forall m n : nat,
+  m * S n = m + m * n.
+Proof.
+  intros n m. induction n as [|n' IHn'].
+  simpl. reflexivity.
+  simpl. rewrite -> IHn'. rewrite <- plus_swap. reflexivity.
+Qed.
+
+Theorem mult_comm : forall m n : nat,
+  m * n = n * m.
+Proof.
+  intros m n. induction n as [|n' IHn'].
+  rewrite -> mult_n_zero. reflexivity.
+  simpl. rewrite <- IHn'. rewrite <- mult_m_plus_Sn_eq_mn. reflexivity.
+Qed.
+ 
+Fixpoint beq_nat (n m : nat) : bool :=
+  match n with
+  | O => match m with
+         | O => true
+         | S m' => false
+         end
+  | S n' => match m with
+            | O => false
+            | S m' => beq_nat n' m'
+            end
+  end.
+  
+Theorem beq_nat_refl : forall n : nat,
+  true = beq_nat n n.
+Proof.
+  intros n. induction n as [|n' IHn'].
+  reflexivity.
+  simpl. rewrite <- IHn'. reflexivity.
+Qed.
+
+Theorem plus_swap' : forall n m p : nat,
+  n + (m + p) = m + (n + p).
+Proof.
+  intros n m p.
+  assert (H1: n + (m + p) = (n + m) + p). { rewrite <- plus_assoc. reflexivity. }
+  rewrite -> H1.
+  assert (H2: m + (n + p) = (m + n) + p). { rewrite <- plus_assoc. reflexivity. }
+  rewrite -> H2.
+  replace (m + n) with (n + m). reflexivity.
+  rewrite <- plus_comm. reflexivity.
+Qed.
