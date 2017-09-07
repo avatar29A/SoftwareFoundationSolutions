@@ -13,6 +13,7 @@ Definition fst (p : natprod) : nat :=
    | (x,y) => x
   end.
 
+Check (pair 3 5).
 Example fst_eq_3: fst (pair 3 5) = 3.
 
 Definition snd (p : natprod) : nat :=
@@ -72,14 +73,6 @@ Definition mylist1 := 1 :: (2 :: (3 :: nil)).
 Definition mylist2 := 1 :: 2 :: 3 :: nil.
 Definition mylist3 := [1;2;3].
 
-Fixpoint repeat (n count : nat) : natlist :=
-  match count with
-   | 0 => []
-   | S count' => n :: (repeat n count')
-  end.
-
-Example repeat_42_3: repeat 42 3 = [42; 42; 42].
-
 Fixpoint length (l:natlist) : nat :=
   match l with
    | [] => 0
@@ -87,6 +80,52 @@ Fixpoint length (l:natlist) : nat :=
   end.
 
 Example length_3: length [1; 2; 3] = 3.
+Proof. reflexivity. Qed.
+
+Fixpoint repeat (n count : nat) : natlist :=
+  match count with
+   | 0 => []
+   | S count' => n :: (repeat n count')
+  end.
+
+Fixpoint repeat' (n count : nat) : natlist :=
+  if beq_nat count 5 then []
+  else repeat n count
+  .
+
+Example repeat_42_3: repeat 42 3 = [42; 42; 42].
+  Proof. reflexivity. Qed.
+Example repeat'_42_4: repeat' 42 3 = [42; 42; 42].
+  Proof. reflexivity. Qed.
+Example repeat'_42_5: repeat' 42 5 = [].
+  Proof. reflexivity. Qed.
+
+Theorem repeat_length : forall n : nat,
+    length(repeat 0 n) = n.
+Proof.
+  intros n.
+  simpl.
+  induction n.
+  simpl.
+  reflexivity.
+  simpl.
+  rewrite -> IHn.
+  reflexivity.
+Qed.
+
+Fixpoint one_exactly (el : nat) (l : natlist) (ok : bool) : bool :=
+  match l with
+  | [] => ok
+  | n :: xs => if beq_nat n el
+                 then (one_exactly el xs ok)
+                 else (one_exactly el xs false)
+  end.
+
+Example one_exactly1 : one_exactly 10 [10;10;10] true = true.
+Proof. reflexivity. Qed.
+
+Example  one_exactly2 := one_exactly 11 [11; 10; 11] true = false.
+Proof. reflexivity. Qed.
 
 Fixpoint app (l1 l2 : natlist) : natlist :=
  match l1 with
@@ -156,7 +195,8 @@ Example test_alternate2:
   Proof. reflexivity. Qed.
 
 Example test_alternate3:
-  alternate [1;2;3] [4] = [1;4;2;3].
+  Check e bool (b c 0).
+alternate [1;2;3] [4] = [1;4;2;3].
   Proof. reflexivity. Qed.
 
 Example test_alternate4:
