@@ -1,3 +1,6 @@
+Require Export Basics.
+Require Export List.
+
 Module Poly.
 
 Inductive list (X : Type) : Type :=
@@ -29,6 +32,12 @@ Fixpoint app {X : Type} (l1 l2 : list X) : list X :=
 
 Example app_1 : app (cons 1 (cons 2 ( cons 3 nil))) (cons 4 (cons 5 nil)) = (cons 1 (cons 2 (cons 3 ( cons 4 ( cons 5 nil))))).
 Proof. reflexivity. Qed.
+
+Fixpoint snoc {X:Type} (l:list X) (v:X) : (list X) :=
+  match l with
+  | nil      => cons v (nil)
+  | cons h t => cons h (snoc t v)
+  end.
 
 Fixpoint rev {X:Type} (l:list X) : list X :=
   match l with
@@ -134,4 +143,205 @@ Proof.
   rewrite -> rev_app_distr. 
   rewrite -> IHl.
   reflexivity.
+Qed.
+
+(* ###################################################### *)
+(** ** Polymorphic Pairs *)
+
+(** Following the same pattern, the type definition we gave in
+    the last chapter for pairs of numbers can be generalized to
+    _polymorphic pairs_ (or _products_): *)
+
+(* ###################################################### *)
+(** ** Polymorphic Pairs *)
+
+(** Following the same pattern, the type definition we gave in
+    the last chapter for pairs of numbers can be generalized to
+    _polymorphic pairs_ (or _products_): *)
+
+Inductive prod (X Y : Type) : Type :=
+  | pair : X -> Y -> prod X Y.
+
+Arguments pair {X} {Y} _ _.
+
+Notation "( x , y )" := (pair x y).
+Notation " X * Y " := (prod X Y) : type_scope.
+
+Definition fst {X Y : Type} (p : X * Y) : X :=
+  match p with
+  | (x, _) => x
+  end.
+
+Definition snd {X Y : Type} (p : X * Y) : Y :=
+  match p with
+  | (_, y) => y
+  end.
+
+Fixpoint combine {X Y : Type} (lx : list X) (ly : list Y) : list (X * Y) :=
+  match lx, ly with
+    | [], _ => []
+    | _, [] => []
+    |   x :: xs, y :: ys => (x, y) :: (combine xs ys)
+  end.
+
+Compute combine [1; 2] [3; 4].
+Compute combine [1; 2] [3; 4; 5].
+
+Check @combine.
+
+Compute (combine [1;2] [false;false;true;true]).
+
+Fixpoint split {X Y : Type} (l : list (X*Y))
+               : (list X) * (list Y) :=
+  match l with
+  | [] => (nil, nil)
+  | (x, y) :: xs => (x :: fst (split xs), y :: snd (split xs))
+  end.
+
+
+
+Example test_split:
+  split [(1,false);(2,false)] = ([1;2],[false;false]).
+Proof. reflexivity. Qed.
+
+(* ###################################################### *)
+(** ** Polymorphic Options *)
+
+(** One last polymorphic type for now: _polymorphic options_.
+    The type declaration generalizes the one for [natoption] in the
+    previous chapter: *)
+
+Inductive option (X:Type) : Type :=
+  | Some : X -> option X
+  | None : option X.
+
+Arguments Some {X} _.
+Arguments None {X}.
+
+(** *** *)
+(** We can now rewrite the [index] function so that it works
+    with any type of lists. *)
+
+Fixpoint beq_nat (n m : nat) : bool := 
+  match n, m with
+  | O, O => true
+  | S _, O => false
+  | O, S _ => false
+  | S n1, S m1 => beq_nat n1 m1
+  end.
+
+
+Fixpoint index {X : Type} (n : nat)
+               (l : list X) : option X :=
+  match l with
+  | [] => None
+  | a :: l' => if beq_nat n O then Some a else index (pred n) l'
+  end.
+
+Example test_index1 :    index 0 [4;5;6;7]  = Some 4.
+Proof. reflexivity.  Qed.
+Example test_index2 :    index  1 [[1];[2]]  = Some [2].
+Proof. reflexivity.  Qed.
+Example test_index3 :    index  2 [true]  = None.
+Proof. reflexivity.  Qed.
+
+Definition hd_error {X : Type} (l : list X) : option X :=
+  match l with
+    | [] => None
+    | x :: _ => Some x
+  end.
+
+Check @hd_error.
+
+Example test_hd_error1 : hd_error [1;2] = Some 1.
+Proof. reflexivity. Qed.
+
+Example test_hd_error2 : hd_error [[1];[2]] = Some [1].
+Proof. reflexivity. Qed.
+
+Example test_hd_error3 : hd_error mynil = None.
+Proof. reflexivity. Qed.
+
+
+(* ###################################################### *)
+(** ** High order function *)
+
+Definition doit3times {X:Type} (f:X->X) (n:X) : X :=
+  f (f (f n)).
+
+Check @doit3times.
+
+Example test_doit3times': doit3times negb true = false.
+Proof. reflexivity. Qed.
+
+Example test_anon_fun':
+  doit3times (fun n => n * n) 2 = 256.
+Proof. reflexivity. Qed.
+
+ Fixpoint filter {X:Type} (test: X->bool) (l:list X)
+                : (list X) :=
+  match l with
+  | [] => []
+  | h :: t => if test h then h :: (filter test t)
+                        else filter test t
+  end. 
+
+Example test_filter1: filter (fun l => beq_nat l 2) [1;2;3;4] = [2].
+Proof. reflexivity. Qed.
+
+Definition length_is_1 {X : Type} (l : list X) : bool :=
+  beq_nat (length l) 1.
+
+Example test_filter2:
+    filter length_is_1
+           [ [1; 2]; [3]; [4]; [5;6;7]; []; [8] ]
+  = [ [3]; [4]; [8] ].
+Proof. reflexivity. Qed.
+
+Definition partition {X : Type} (t: X -> bool) (l : list X) : list X * list X :=
+  (filter t l, filter (fun x => negb (t x)) l).
+
+Example test_partition2: partition (fun x => false) [5;9;0] = ([], [5;9;0]).
+Proof. reflexivity. Qed.
+
+(* ###################################################### *)
+(** ** Map *)
+
+(** Another handy higher-order function is called [map]. *)
+
+Fixpoint map {X Y:Type} (f:X->Y) (l:list X)
+             : (list Y) :=
+  match l with
+  | []     => []
+  | h :: t => (f h) :: (map f t)
+  end.
+
+(** *** *)
+(** It takes a function [f] and a list [ l = [n1, n2, n3, ...] ]
+    and returns the list [ [f n1, f n2, f n3,...] ], where [f] has
+    been applied to each element of [l] in turn.  For example: *)
+
+Example test_map1: map (plus 3) [2;0;2] = [5;3;5].
+Proof. reflexivity.  Qed.
+
+Arguments snoc {X} l v.
+
+Theorem map_snoc : forall (X Y : Type) (f : X -> Y) (x : X) (l : list X),
+  map f (snoc l x) = snoc (map f l) (f x).
+Proof.
+  intros X Y f x l.
+  induction l.
+  reflexivity.
+  simpl. rewrite -> IHl. reflexivity.
+Qed.
+
+Theorem map_rev : forall (X Y : Type) (f : X -> Y) (l : list X),
+  map f (rev l) = rev (map f l).
+Proof.
+  intros X Y f l.
+  induction l.
+  reflexivity.
+  simpl.
+  rewrite <- IHl.
+  rewrite -> map_snoc. reflexivity.
 Qed.
