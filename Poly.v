@@ -335,6 +335,16 @@ Proof.
   simpl. rewrite -> IHl. reflexivity.
 Qed.
 
+Lemma map_distr : forall (X Y : Type) (f : X -> Y) (l1 l2 : list X),
+  map f (l1 ++ l2) = map f l1 ++ map f l2.
+Proof.
+  intros X Y f l1 l2.
+  induction l1.
+  reflexivity.
+  simpl. rewrite -> IHl1.
+  reflexivity.
+Qed.
+
 Theorem map_rev : forall (X Y : Type) (f : X -> Y) (l : list X),
   map f (rev l) = rev (map f l).
 Proof.
@@ -343,5 +353,119 @@ Proof.
   reflexivity.
   simpl.
   rewrite <- IHl.
-  rewrite -> map_snoc. reflexivity.
+  rewrite -> map_distr.
+  simpl.
+  reflexivity.
 Qed.
+
+Fixpoint flat_map {X Y : Type} (f : X -> list Y) (l : list X) : (list Y) :=
+  match l with
+  | [] => []
+  | x :: xs => (f x) ++ (flat_map f xs)
+  end.
+
+ Example test_flat_map1:
+  flat_map (fun n => [n;n;n]) [1;5;4]
+  = [1; 1; 1; 5; 5; 5; 4; 4; 4].
+ Proof. reflexivity. Qed.
+
+(** ** Fold *)
+
+(** An even more powerful higher-order function is called
+    [fold].  This function is the inspiration for the "[reduce]"
+    operation that lies at the heart of Google's map/reduce
+    distributed programming framework. *)
+
+ Fixpoint fold {X Y : Type} (f : X -> Y -> Y) ( l : list X) (b : Y) : Y :=
+   match l with
+   | nil => b
+   | h :: t => f h ( fold f t b)
+   end.
+
+ Compute fold plus [1;2;3;4] 0.
+
+Definition fold_length {X : Type} (l : list X) : nat :=
+  fold (fun _ n => S n) l 0.
+
+Example test_fold_length1 : fold_length [4;7;0] = 3.
+Proof. reflexivity. Qed.
+
+Theorem fold_length_correct : forall X (l : list X),
+  fold_length l = length l.
+Proof.
+  intros X l.
+  induction l.
+  reflexivity.
+  simpl.
+  rewrite <- IHl.
+  reflexivity.
+Qed.
+
+
+(** **** Exercise: 3 stars (fold_map)  *)
+(** We can also define [map] in terms of [fold].  Finish [fold_map]
+    below. *)
+
+Definition fold_map {X Y:Type} (f : X -> Y) (l : list X) : list Y :=
+  fold (fun x y => f x :: y) l [].
+
+Theorem fold_map_correct : forall (X Y : Type) (f : X -> Y) (l : list X),
+  map f l = fold_map f l.
+Proof.
+  intros X Y f l.
+  induction l.
+  reflexivity.
+  simpl. 
+  rewrite -> IHl.
+  reflexivity.
+Qed.
+
+Definition prod_curry {X Y Z : Type}
+  (f : X * Y -> Z) (x : X) (y : Y) : Z := f (x, y).
+
+Check @prod_curry.
+
+Definition prod_uncurry {X Y Z : Type}
+  (f : X -> Y -> Z) (p : X * Y) : Z :=
+  f (fst p) (snd p).
+                     
+Example test_map1': map (plus 3) [2;0;2] = [5;3;5].
+Proof. reflexivity. Qed.
+
+Check @prod_uncurry.
+
+Theorem uncurry_curry : forall (X Y Z : Type)
+                        (f : X -> Y -> Z)
+                        x y,
+  prod_curry (prod_uncurry f) x y = f x y.
+Proof.
+  intros X Y Z f x y.
+  reflexivity.
+Qed.
+
+Theorem curry_uncurry : forall (X Y Z : Type)
+                        (f : (X * Y) -> Z) (p : X * Y),
+  prod_uncurry (prod_curry f) p = f p.
+Proof.
+  intros X Y Z f p.
+  destruct p.
+  reflexivity.
+Qed.
+
+Fixpoint nth_error {X : Type} (l : list X) (n : nat) : option X :=
+     match l with
+     | [] => None
+     | a :: l' => if beq_nat n O then Some a else nth_error l' (pred n)
+     end.
+
+(** **** Exercise: 4 stars, advanced (church_numerals)  *)
+
+Module Church.
+
+(** In this exercise, we will explore an alternative way of defining
+    natural numbers, using the so-called _Church numerals_, named
+    after mathematician Alonzo Church. We can represent a natural
+    number [n] as a function that takes a function [f] as a parameter
+    and returns [f] iterated [n] times. More formally, *)
+
+Definition nat := forall X : Type, (X -> X) -> X -> X.
